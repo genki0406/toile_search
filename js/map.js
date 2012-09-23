@@ -4,6 +4,8 @@ var infowindow;
 function initialize() {
     var mapOptions = {
         zoom: 17,
+        disableDefaultUI: true,
+        streetViewControl: true,
         mapTypeId: google.maps.MapTypeId.ROADMAP
     };
     map = new google.maps.Map(document.getElementById('map_canvas'), mapOptions);
@@ -12,18 +14,28 @@ function initialize() {
     if(navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             var pos = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+            // トイレ追加ボタン表示
+            var toileControlDiv = document.createElement('div');
+			var toileControl = new addToileControl(toileControlDiv, map);
+			toileControlDiv.index = 1;
+			map.controls[google.maps.ControlPosition.TOP_RIGHT].push(toileControlDiv);
+
+			// 現在地アイコン表示
             var marker = new google.maps.Marker({
 				position:pos,
 				map: map,
-				title: '現在地'
+				title: '現在地',
+				icon: 'img/here.png' 
 			});
 
 
+            // 周辺トイレマーカー表示
             var request = {
 				location: pos,
 				radius: 500,
-				// keyword: 'トイレ'
-				types: ['store']
+				keyword: 'トイレ'
+				// types: ['store']
 			};
 
 			infowindow = new google.maps.InfoWindow();	
@@ -46,22 +58,66 @@ function initialize() {
     }
 }
 
+ function addToileControl(controlDiv, map) {
+
+	// Set CSS styles for the DIV containing the control
+	// Setting padding to 5 px will offset the control
+	// from the edge of the map
+	controlDiv.style.padding = '5px';
+
+	// Set CSS for the control border
+	var controlUI = document.createElement('div');
+	controlUI.style.backgroundColor = 'white';
+	controlUI.style.borderStyle = 'solid';
+	controlUI.style.borderWidth = '2px';
+	controlUI.style.cursor = 'pointer';
+	controlUI.style.textAlign = 'center';
+	controlUI.title = 'Click to set the map to Home';
+	controlDiv.appendChild(controlUI);
+
+	// Set CSS for the control interior
+	var controlText = document.createElement('div');
+	controlText.style.fontFamily = 'Arial,sans-serif';
+	controlText.style.fontSize = '12px';
+	controlText.style.paddingLeft = '4px';
+	controlText.style.paddingRight = '4px';
+	controlText.innerHTML = '<b>トイレ追加</b>';
+	controlUI.appendChild(controlText);
+
+	// Setup the click event listeners: simply set the map to
+	// Chicago
+	google.maps.event.addDomListener(controlUI, 'click', function() {
+		addMarker(map.getCenter());
+	});
+
+}
+
+function addMarker(position){
+	new google.maps.Marker({
+		position: position,
+		map: map,
+		draggable: true,
+		animation: google.maps.Animation.DROP
+	});
+}
+
 function callback(results, status) {
 	if (status == google.maps.places.PlacesServiceStatus.OK) {
 		for (var i = 0; i < results.length; i++) {
-			createMarker(results[i]);
+			createToileMarker(results[i]);
 		}
 	}
 }
 
-function createMarker(place) {
+function createToileMarker(place) {
 	var placeLoc = place.geometry.location;
 	var marker = new google.maps.Marker({
 		map: map,
+		icon: 'img/toile.png' ,
 		position: place.geometry.location
 	});
 
-		google.maps.event.addListener(marker, 'click', function() {
+	google.maps.event.addListener(marker, 'click', function() {
 		infowindow.setContent(place.name);
 		infowindow.open(map, this);
 	});
