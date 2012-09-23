@@ -1,5 +1,7 @@
+var directionDisplay;
+var directionsService = new google.maps.DirectionsService();
 var map;
-var infowindow;
+var nowPosition;
   
 function initialize() {
     var mapOptions = {
@@ -13,7 +15,7 @@ function initialize() {
     // Try HTML5 geolocation
     if(navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
-            var pos = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+            nowPosition = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
 
             // トイレ追加ボタン表示
             var toileControlDiv = document.createElement('div');
@@ -23,7 +25,7 @@ function initialize() {
 
 			// 現在地アイコン表示
             var marker = new google.maps.Marker({
-				position:pos,
+				position:nowPosition,
 				map: map,
 				title: '現在地',
 				icon: 'img/here.png' 
@@ -32,15 +34,17 @@ function initialize() {
 
             // 周辺トイレマーカー表示
             var request = {
-				location: pos,
+				location: nowPosition,
 				radius: 500,
 				keyword: 'トイレ'
 				// types: ['store']
 			};
 
-			infowindow = new google.maps.InfoWindow();	
 			var service = new google.maps.places.PlacesService(map);
 			service.search(request, callback);
+
+			directionsDisplay = new google.maps.DirectionsRenderer();
+			directionsDisplay.setMap(map);
 
             // var infowindow = new google.maps.InfoWindow({
 				//  map: map,
@@ -48,7 +52,7 @@ function initialize() {
 				//  content: 'Location found using HTML5.'
             // });
 
-            map.setCenter(pos);
+            map.setCenter(nowPosition);
         }, function() {
 			handleNoGeolocation(true);
         });
@@ -58,7 +62,28 @@ function initialize() {
     }
 }
 
- function addToileControl(controlDiv, map) {
+
+function calcRoute(endLat, endLng) {
+	// var start = document.getElementById('start').value;
+	// var end = document.getElementById('end').value;
+	var endPosition = new google.maps.LatLng(endLat, endLng);
+	var request = {
+		origin:nowPosition,
+		destination:endPosition,
+		travelMode: google.maps.DirectionsTravelMode.WALKING
+	};
+	directionsService.route(request, function(response, status) {
+		if (status == google.maps.DirectionsStatus.OK) {
+			alert(
+				'距離:' + response.routes[0].legs[0].distance.text + 
+				'\n徒歩:' + response.routes[0].legs[0].duration.text
+			);
+			directionsDisplay.setDirections(response);
+		}
+	});
+}
+
+function addToileControl(controlDiv, map) {
 
 	// Set CSS styles for the DIV containing the control
 	// Setting padding to 5 px will offset the control
@@ -89,7 +114,6 @@ function initialize() {
 	google.maps.event.addDomListener(controlUI, 'click', function() {
 		addMarker(map.getCenter());
 	});
-
 }
 
 function addMarker(position){
@@ -118,7 +142,10 @@ function createToileMarker(place) {
 	});
 
 	google.maps.event.addListener(marker, 'click', function() {
-		infowindow.setContent(place.name);
+		var infowindow = new google.maps.InfoWindow();	
+		infowindow.setContent(
+			'<div><p>' + place.name + '</p><input type="button" value="ここまでの道順" onClick="calcRoute(\'' + this.getPosition().Sa + '\',\'' + this.getPosition().Ta + '\')" />'
+		);
 		infowindow.open(map, this);
 	});
 }
